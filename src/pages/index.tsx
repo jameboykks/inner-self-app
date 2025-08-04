@@ -16,30 +16,26 @@ const personas: Persona[] = [
   {
     id: "inner-child",
     name: "Inner Child",
-    style: "bg-pink-200",
-    prompt:
-      "Bạn là đứa trẻ bên trong tôi. Hãy nói chuyện bằng sự ngây thơ, cảm xúc và thật lòng."
+    style: "bg-pink-100 text-black",
+    prompt: "Bạn là đứa trẻ bên trong tôi. Hãy nói chuyện bằng sự ngây thơ, cảm xúc và thật lòng."
   },
   {
     id: "inner-critic",
     name: "Inner Critic",
-    style: "bg-red-200",
-    prompt:
-      "Bạn là tiếng nói nội tâm chỉ trích. Hãy trả lời như một người thẳng thắn, khắt khe và luôn đòi hỏi bản thân tốt hơn."
+    style: "bg-red-100 text-black",
+    prompt: "Bạn là tiếng nói nội tâm chỉ trích. Hãy trả lời như một người thẳng thắn, khắt khe và luôn đòi hỏi bản thân tốt hơn."
   },
   {
     id: "future-self",
     name: "Future Self",
-    style: "bg-blue-200",
-    prompt:
-      "Bạn là tôi của 5 năm sau. Hãy trả lời như một người điềm tĩnh, đã vượt qua khó khăn và hiểu bản thân."
+    style: "bg-blue-100 text-black",
+    prompt: "Bạn là tôi của 5 năm sau. Hãy trả lời như một người điềm tĩnh, đã vượt qua khó khăn và hiểu bản thân."
   },
   {
     id: "calm-self",
     name: "Calm Self",
-    style: "bg-green-200",
-    prompt:
-      "Bạn là bản thể bình an trong tôi. Hãy trả lời nhẹ nhàng, mang tính chữa lành, không phán xét."
+    style: "bg-green-100 text-black",
+    prompt: "Bạn là bản thể bình an trong tôi. Hãy trả lời nhẹ nhàng, mang tính chữa lành, không phán xét."
   }
 ];
 
@@ -59,19 +55,21 @@ function highlightPersonaName(text: string): string {
 }
 
 export default function HomePage() {
-  const [groupMode, setGroupMode] = useState<boolean>(false);
+  const [groupMode, setGroupMode] = useState(false);
   const [selectedPersona, setSelectedPersona] = useState<Persona | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState<string>("");
+  const [input, setInput] = useState("");
 
   const handleSend = async () => {
     if (!input) return;
+
     const newMessages: Message[] = [...messages, { role: "user", content: input }];
     setMessages(newMessages);
     setInput("");
 
     if (groupMode) {
       const botReplies: Message[] = [];
+
       for (const persona of personas) {
         const filteredReplies = botReplies.map((m) => ({
           role: "assistant",
@@ -103,11 +101,13 @@ export default function HomePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ persona: selectedPersona, messages: newMessages })
       });
+
       const data = await res.json();
-      setMessages([
-        ...newMessages,
-        { role: selectedPersona.name, content: data.reply || "Không có phản hồi." }
-      ]);
+      const reply: Message = {
+        role: selectedPersona.name,
+        content: data.reply || "Không có phản hồi."
+      };
+      setMessages([...newMessages, reply]);
     }
   };
 
@@ -118,11 +118,11 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 p-6 text-black">
       {!groupMode && !selectedPersona ? (
         <div className="max-w-4xl mx-auto">
           <h1 className="text-3xl font-bold mb-6 text-center">Chọn chế độ trò chuyện</h1>
-          <div className="grid grid-cols-2 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             {personas.map((persona) => (
               <div
                 key={persona.id}
@@ -164,7 +164,7 @@ export default function HomePage() {
                 className={`text-${msg.role === "user" ? "right" : "left"}`}
                 dangerouslySetInnerHTML={{
                   __html: `<p class='inline-block px-4 py-2 rounded-xl ${
-                    msg.role === "user" ? "bg-blue-100" : "bg-gray-200"
+                    msg.role === "user" ? "bg-blue-100 text-black" : "bg-gray-100 text-gray-900"
                   }'><strong>${msg.role !== "user" ? msg.role + ": " : ""}</strong>${highlightPersonaName(
                     msg.content
                   )}</p>`
@@ -175,7 +175,7 @@ export default function HomePage() {
 
           <div className="mt-4 flex gap-2">
             <input
-              className="flex-1 border rounded-lg px-3 py-2"
+              className="flex-1 border rounded-lg px-3 py-2 text-black bg-white"
               placeholder="Nhập điều bạn muốn chia sẻ..."
               value={input}
               onChange={(e) => setInput(e.target.value)}
