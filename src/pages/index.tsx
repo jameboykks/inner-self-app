@@ -27,130 +27,125 @@ const personas = [
   }
 ];
 
+const personaNames = personas.map(p => p.name);
+
+function highlightPersonaName(text) {
+  for (const name of personaNames) {
+    const pattern = new RegExp(`(${name}:)`, 'g');
+    if (pattern.test(text)) {
+      return text.replace(pattern, `<span class='text-red-600 font-semibold'>$1</span>`);
+    }
+  }
+  return text;
+}
+
 export default function HomePage() {
-  const [mode, setMode] = useState<"menu" | "group" | "single">("menu");
-  const [selectedPersona, setSelectedPersona] = useState<any>(null);
-  const [messages, setMessages] = useState<any[]>([]);
+  const [groupMode, setGroupMode] = useState(false);
+  const [selectedPersona, setSelectedPersona] = useState(null);
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
 
   const handleSend = async () => {
     if (!input) return;
-    const userMessage = { role: "user", content: input };
-    const newMessages = [...messages, userMessage];
+    const newMessages = [...messages, { role: "user", content: input }];
     setMessages(newMessages);
     setInput("");
 
-    if (mode === "single" && selectedPersona) {
+    if (groupMode) {
+      let botReplies = [];
+      for (const persona of personas) {
+        const filteredReplies = botReplies.map((m) => ({
+          role: "assistant",
+          content: `${m.role}: ${m.content}`
+        }));
+
+        const payloadMessages = [
+          { role: "user", content: input },
+          ...filteredReplies.filter(m => m.role !== persona.name)
+        ];
+
+        const res = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ persona, messages: payloadMessages })
+        });
+
+        const data = await res.json();
+        const reply = { role: persona.name, content: data.reply || "Không có phản hồi." };
+        botReplies.push(reply);
+        setMessages((prev) => [...prev, reply]);
+      }
+    } else if (selectedPersona) {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ persona: selectedPersona, messages: newMessages })
       });
       const data = await res.json();
-      setMessages([...newMessages, { role: selectedPersona.name, content: data.reply }]);
-    }
-
-    if (mode === "group") {
-      const botReplies: any[] = [];
-
-      for (const persona of personas) {
-        const res = await fetch("/api/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ persona, messages: newMessages })
-        });
-        const data = await res.json();
-
-        const replyLines = data.reply.split("\n").map((line: string) => {
-          const colonIdx = line.indexOf(":");
-          if (colonIdx > 0) {
-            const label = line.slice(0, colonIdx).trim();
-            const content = line.slice(colonIdx + 1).trim();
-            return { role: `${persona.name}: ${label}`, content };
-          }
-          return { role: persona.name, content: line };
-        });
-
-        botReplies.push(...replyLines);
-      }
-
-      setMessages([...newMessages, ...botReplies]);
+      setMessages([...newMessages, { role: selectedPersona.name, content: data.reply || "Không có phản hồi." }]);
     }
   };
 
-  const goBackToMenu = () => {
-    setMode("menu");
-    setMessages([]);
+  const resetState = () => {
+    setGroupMode(false);
     setSelectedPersona(null);
+    setMessages([]);
   };
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-      {mode === "menu" && (
-        <div className="max-w-xl mx-auto text-center">
-          <h1 className="text-3xl font-bold mb-6">Chọn chế độ trò chuyện</h1>
-          <button
-            className="bg-purple-600 text-white px-6 py-3 rounded-xl hover:bg-purple-700 mb-4"
-            onClick={() => setMode("group")}
-          >
-            Trò chuyện với cả nhóm bản ngã
-          </button>
-          <div className="mt-6 text-left">
-            <h2 className="text-lg font-bold mb-2">Hoặc chọn 1 bản ngã:</h2>
-            <div className="grid grid-cols-2 gap-3">
-              {personas.map((p) => (
-                <button
-                  key={p.id}
-                  className={`${p.style} px-4 py-2 rounded-xl text-left hover:opacity-80`}
-                  onClick={() => {
-                    setSelectedPersona(p);
-                    setMode("single");
-                  }}
-                >
-                  {p.name}
-                </button>
-              ))}
-            </div>
+      {!groupMode && !selectedPersona ? (
+        <div className="max-w-4xl mx-auto">
+          <h1 className="text-3xl font-bold mb-6 text-center">Chọn chế độ trò chuyện</h1>
+          <div className="grid grid-cols-2 gap-4 mb-6">
+            {personas.map((persona) => (
+              <div
+                key={persona.id}
+                className={`rounded-2xl p-6 cursor-pointer shadow ${persona.style}`}
+                onClick={() => setSelectedPersona(persona)}
+              >
+                <h2 className="text-xl font-semibold">{persona.name}</h2>
+                <p className="text-sm mt-2">Trò chuyện 1:1 với bản ngã này</p>
+              </div>
+            ))}
+          </div>
+          <div className="text-center">
+            <button
+              className="bg-purple-600 text-white px-6 py-3 rounded-xl hover:bg-purple-700"
+              onClick={() => setGroupMode(true)}
+            >
+              Trò chuyện với cả nhóm bản ngã
+            </button>
           </div>
         </div>
-      )}
-
-      {mode !== "menu" && (
+      ) : (
         <div className="max-w-2xl mx-auto">
           <div className="mb-4">
             <button
               className="text-sm text-blue-600 underline mb-2"
-              onClick={goBackToMenu}
+              onClick={resetState}
             >
               ← Quay lại chọn chế độ
             </button>
             <h2 className="text-xl font-bold">
-              Bạn đang trò chuyện với:{" "}
-              {mode === "group" ? "Toàn bộ bản ngã" : selectedPersona?.name}
+              Bạn đang trò chuyện với: {groupMode ? "Toàn bộ bản ngã" : selectedPersona?.name}
             </h2>
           </div>
 
           <div className="bg-white rounded-xl shadow p-4 space-y-4 h-[500px] overflow-y-scroll">
-            {messages.map((msg, idx) => {
-              const isUser = msg.role === "user";
-              const isSubBotReply = msg.role.includes(": ");
-              return (
-                <div key={idx} className={`text-${isUser ? "right" : "left"}`}>
-                  <p
-                    className={`inline-block px-4 py-2 rounded-xl ${
-                      isUser ? "bg-blue-100" : "bg-gray-200"
-                    }`}
-                  >
-                    <strong
-                      className={isSubBotReply ? "text-red-600" : "text-black"}
-                    >
-                      {!isUser ? msg.role + ": " : ""}
-                    </strong>
-                    {msg.content}
-                  </p>
-                </div>
-              );
-            })}
+            {messages.map((msg, idx) => (
+              <div
+                key={idx}
+                className={`text-${msg.role === "user" ? "right" : "left"}`}
+                dangerouslySetInnerHTML={{
+                  __html: `<p class='inline-block px-4 py-2 rounded-xl ${
+                    msg.role === "user" ? "bg-blue-100" : "bg-gray-200"
+                  }'><strong>${msg.role !== "user" ? msg.role + ": " : ""}</strong>${highlightPersonaName(
+                    msg.content
+                  )}</p>`
+                }}
+              />
+            ))}
           </div>
 
           <div className="mt-4 flex gap-2">
