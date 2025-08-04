@@ -1,58 +1,77 @@
 import { useState } from "react";
 
-const personas = [
+interface Message {
+  role: string;
+  content: string;
+}
+
+interface Persona {
+  id: string;
+  name: string;
+  style: string;
+  prompt: string;
+}
+
+const personas: Persona[] = [
   {
     id: "inner-child",
     name: "Inner Child",
     style: "bg-pink-200",
-    prompt: "Bạn là đứa trẻ bên trong tôi. Hãy nói chuyện bằng sự ngây thơ, cảm xúc và thật lòng."
+    prompt:
+      "Bạn là đứa trẻ bên trong tôi. Hãy nói chuyện bằng sự ngây thơ, cảm xúc và thật lòng."
   },
   {
     id: "inner-critic",
     name: "Inner Critic",
     style: "bg-red-200",
-    prompt: "Bạn là tiếng nói nội tâm chỉ trích. Hãy trả lời như một người thẳng thắn, khắt khe và luôn đòi hỏi bản thân tốt hơn."
+    prompt:
+      "Bạn là tiếng nói nội tâm chỉ trích. Hãy trả lời như một người thẳng thắn, khắt khe và luôn đòi hỏi bản thân tốt hơn."
   },
   {
     id: "future-self",
     name: "Future Self",
     style: "bg-blue-200",
-    prompt: "Bạn là tôi của 5 năm sau. Hãy trả lời như một người điềm tĩnh, đã vượt qua khó khăn và hiểu bản thân."
+    prompt:
+      "Bạn là tôi của 5 năm sau. Hãy trả lời như một người điềm tĩnh, đã vượt qua khó khăn và hiểu bản thân."
   },
   {
     id: "calm-self",
     name: "Calm Self",
     style: "bg-green-200",
-    prompt: "Bạn là bản thể bình an trong tôi. Hãy trả lời nhẹ nhàng, mang tính chữa lành, không phán xét."
+    prompt:
+      "Bạn là bản thể bình an trong tôi. Hãy trả lời nhẹ nhàng, mang tính chữa lành, không phán xét."
   }
 ];
 
-const personaNames = personas.map(p => p.name);
+const personaNames = personas.map((p) => p.name);
 
-function highlightPersonaName(text) {
+function highlightPersonaName(text: string): string {
   for (const name of personaNames) {
-    const pattern = new RegExp(`(${name}:)`, 'g');
+    const pattern = new RegExp(`(${name}:)`, "g");
     if (pattern.test(text)) {
-      return text.replace(pattern, `<span class='text-red-600 font-semibold'>$1</span>`);
+      return text.replace(
+        pattern,
+        `<span class='text-red-600 font-semibold'>$1</span>`
+      );
     }
   }
   return text;
 }
 
 export default function HomePage() {
-  const [groupMode, setGroupMode] = useState(false);
-  const [selectedPersona, setSelectedPersona] = useState(null);
-  const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState("");
+  const [groupMode, setGroupMode] = useState<boolean>(false);
+  const [selectedPersona, setSelectedPersona] = useState<Persona | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState<string>("");
 
   const handleSend = async () => {
     if (!input) return;
-    const newMessages = [...messages, { role: "user", content: input }];
+    const newMessages: Message[] = [...messages, { role: "user", content: input }];
     setMessages(newMessages);
     setInput("");
 
     if (groupMode) {
-      let botReplies = [];
+      const botReplies: Message[] = [];
       for (const persona of personas) {
         const filteredReplies = botReplies.map((m) => ({
           role: "assistant",
@@ -61,7 +80,7 @@ export default function HomePage() {
 
         const payloadMessages = [
           { role: "user", content: input },
-          ...filteredReplies.filter(m => m.role !== persona.name)
+          ...filteredReplies.filter((m) => m.role !== persona.name)
         ];
 
         const res = await fetch("/api/chat", {
@@ -71,7 +90,10 @@ export default function HomePage() {
         });
 
         const data = await res.json();
-        const reply = { role: persona.name, content: data.reply || "Không có phản hồi." };
+        const reply: Message = {
+          role: persona.name,
+          content: data.reply || "Không có phản hồi."
+        };
         botReplies.push(reply);
         setMessages((prev) => [...prev, reply]);
       }
@@ -82,7 +104,10 @@ export default function HomePage() {
         body: JSON.stringify({ persona: selectedPersona, messages: newMessages })
       });
       const data = await res.json();
-      setMessages([...newMessages, { role: selectedPersona.name, content: data.reply || "Không có phản hồi." }]);
+      setMessages([
+        ...newMessages,
+        { role: selectedPersona.name, content: data.reply || "Không có phản hồi." }
+      ]);
     }
   };
 
