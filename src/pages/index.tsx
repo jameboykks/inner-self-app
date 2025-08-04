@@ -215,6 +215,7 @@ export default function HomePage() {
           </div>
         </div>
       )}
+      <Analytics />
     </div>
   );
 }
